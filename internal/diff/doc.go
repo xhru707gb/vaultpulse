@@ -1,16 +1,14 @@
-// Package diff compares two snapshots of Vault secret metadata and reports
-// which secrets have been added, removed, or modified between runs.
+// Package diff provides utilities for computing and displaying differences
+// between two snapshots of Vault secret metadata.
 //
-// Usage:
+// A diff identifies secrets that have been added, removed, or modified
+// (e.g. version bump or expiry change) between two point-in-time snapshots
+// captured by the snapshot package.
 //
-//	prev := []diff.SecretEntry{ /* loaded from previous snapshot */ }
-//	curr := []diff.SecretEntry{ /* loaded from current check */ }
-//	changes := diff.Compute(prev, curr)
-//	for _, c := range changes {
-//		fmt.Println(c)
-//	}
+// Typical usage:
 //
-// Changes are classified as ChangeAdded, ChangeRemoved, or ChangeModified.
-// A modification is triggered when either the version number or expiry timestamp
-// differs between the two snapshots.
+//	prev, _ := snapshot.Load("vault-snap-prev.json")
+//	curr, _ := snapshot.Load("vault-snap-curr.json")
+//	changes := diff.Compute(prev.Entries, curr.Entries)
+//	fmt.Print(diff.FormatTable(changes))
 package diff
