@@ -1,19 +1,12 @@
-// Package expiry provides secret expiry checking and status reporting
-// for the vaultpulse CLI.
+// Package expiry provides secret expiration checking, formatting,
+// and alerting capabilities for the vaultpulse CLI.
 //
-// The Checker type queries HashiCorp Vault secret metadata and evaluates
-// each secret's remaining TTL against a configurable warning threshold,
-// classifying secrets as OK, WARNING, or EXPIRED.
-//
-// The FormatTable function renders a human-readable tabular summary of
-// multiple SecretStatus values, with optional ANSI colour highlighting.
-//
-// Typical usage:
-//
-//	checker := expiry.NewChecker(vaultClient, 24*time.Hour)
-//	statuses, err := checker.CheckAll(cfg.SecretPaths)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	expiry.FormatTable(os.Stdout, statuses, true)
+// It exposes:
+//   - Checker: queries Vault secret metadata and evaluates TTL
+//     against configurable warning and expiry thresholds, returning
+//     a slice of Status values.
+//   - FormatTable: renders expiry statuses as a human-readable
+//     ASCII table suitable for terminal output.
+//   - Notifier: filters statuses that require attention and dispatches
+//     a JSON alert payload to a configured webhook URL via HTTP POST.
 package expiry
