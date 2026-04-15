@@ -43,6 +43,38 @@ func TestNotify_SendsOnlyAlerts(t *testing.T) {
 	}
 }
 
+func TestNotify_SendsOnlyAlerts_AlertPaths(t *testing.T) {
+	var received alert.WebhookPayload
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	n := alert.NewNotifier(ts.URL)
+	if err := n.Notify(makeStatuses()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Only warning and expired secrets should appear in the payload.
+	paths := make(map[string]bool, len(received.Alerts))
+	for _, a := range received.Alerts {
+		paths[a.Path] = true
+	}
+	if !paths["secret/warn"] {
+		t.Error("expected secret/warn in alerts")
+	}
+	if !paths["secret/gone"] {
+		t.Error("expected secret/gone in alerts")
+	}
+	if paths["secret/ok"] {
+		t.Error("secret/ok should not appear in alerts")
+	}
+}
+
 func TestNotify_NoAlertsSkipsWebhook(t *testing.T) {
 	called := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
