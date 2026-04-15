@@ -1,19 +1,19 @@
-// Package audit provides structured JSON audit logging for VaultPulse
-// operations. Each audit entry records the event type, affected secret path,
-// outcome, and a UTC timestamp so that operators can reconstruct a full
-// history of expiry checks, rotation evaluations, and webhook dispatches.
+// Package audit provides structured audit logging and reporting for
+// vaultpulse secret-check and rotation events.
 //
-// Usage:
+// # Logger
 //
-//	logger, err := audit.NewLogger("/var/log/vaultpulse/audit.jsonl")
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	defer logger.Close()
+// NewLogger returns a Logger that appends newline-delimited JSON records to any
+// io.Writer. Each record captures the UTC timestamp, secret path, event type,
+// outcome status, and remaining TTL.
 //
-//	logger.Log(audit.Entry{
-//		Event:   "expiry_check",
-//		Path:    "secret/db/password",
-//		Outcome: "warning",
-//	})
+// # Summary
+//
+// Summary reads a previously written audit log and returns per-path event
+// counts grouped by status, useful for dashboards or CI gate checks.
+//
+// # Report
+//
+// Report reads a previously written audit log and renders a human-readable
+// tabular report to any io.Writer, suitable for terminal output or file export.
 package audit
