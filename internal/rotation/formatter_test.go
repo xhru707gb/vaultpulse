@@ -50,6 +50,22 @@ func TestFormatTable_RotationLabels(t *testing.T) {
 	}
 }
 
+func TestFormatTable_ContainsPaths(t *testing.T) {
+	paths := []string{"secret/alpha", "secret/beta", "secret/gamma"}
+	var statuses []Status
+	for _, p := range paths {
+		statuses = append(statuses, makeStatus(p, 24*time.Hour))
+	}
+	var sb strings.Builder
+	FormatTable(&sb, statuses)
+	out := sb.String()
+	for _, p := range paths {
+		if !strings.Contains(out, p) {
+			t.Errorf("expected path %q in table output", p)
+		}
+	}
+}
+
 func TestFormatDueIn_Positive(t *testing.T) {
 	d := 2*time.Hour + 30*time.Minute
 	out := formatDueIn(d)
