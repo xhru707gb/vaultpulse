@@ -39,6 +39,19 @@ func TestBuildPayload_TimestampSet(t *testing.T) {
 	}
 }
 
+// TestBuildPayload_AllOK verifies that a payload with only OK statuses
+// results in an empty Alerts slice rather than nil.
+func TestBuildPayload_AllOK(t *testing.T) {
+	statuses := []expiry.SecretStatus{
+		{Path: "secret/a", State: expiry.StateOK, TTL: 86400},
+		{Path: "secret/b", State: expiry.StateOK, TTL: 43200},
+	}
+	payload := buildPayload(statuses)
+	if len(payload.Alerts) != 0 {
+		t.Errorf("expected 0 alerts for all-OK statuses, got %d", len(payload.Alerts))
+	}
+}
+
 func TestSendWebhook_Success(t *testing.T) {
 	var received WebhookPayload
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
