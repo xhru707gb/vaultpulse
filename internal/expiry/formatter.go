@@ -15,6 +15,7 @@ const (
 )
 
 // FormatTable writes a human-readable table of secret statuses to w.
+// If useColor is true, the STATUS column is colorized based on expiry state.
 func FormatTable(w io.Writer, statuses []*SecretStatus, useColor bool) error {
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(tw, "PATH\tEXPIRES AT\tTTL\tSTATUS")
@@ -34,6 +35,24 @@ func FormatTable(w io.Writer, statuses []*SecretStatus, useColor bool) error {
 		}
 	}
 	return tw.Flush()
+}
+
+// FormatSummary writes a one-line summary of secret counts by status to w.
+func FormatSummary(w io.Writer, statuses []*SecretStatus) error {
+	var expired, warning, ok int
+	for _, s := range statuses {
+		switch {
+		case s.IsExpired:
+			expired++
+		case s.Warning:
+			warning++
+		default:
+			ok++
+		}
+	}
+	_, err := fmt.Fprintf(w, "Summary: %d OK, %d WARNING, %d EXPIRED (total: %d)\n",
+		ok, warning, expired, len(statuses))
+	return err
 }
 
 func statusLabel(s *SecretStatus) (string, string) {
