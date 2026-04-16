@@ -14,3 +14,11 @@ func (c *Cache) EntryExpiresAt(key string) (time.Time, bool) {
 	}
 	return e.ExpiresAt, true
 }
+
+// Len returns the number of items currently in the cache.
+// It is only available during testing.
+func (c *Cache) Len() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.items)
+}
