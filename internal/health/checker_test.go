@@ -82,3 +82,20 @@ func TestCheck_Latency(t *testing.T) {
 		t.Errorf("negative latency: %v", s.Latency)
 	}
 }
+
+func TestCheck_CancelledContext(t *testing.T) {
+	srv := newMockVaultServer(t, false)
+	defer srv.Close()
+
+	checker := newTestChecker(t, srv)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately before making the request
+
+	s := checker.Check(ctx)
+	if s.Error == nil {
+		t.Error("expected error for cancelled context, got nil")
+	}
+	if s.Healthy() {
+		t.Error("expected unhealthy status for cancelled context")
+	}
+}
