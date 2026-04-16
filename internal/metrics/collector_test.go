@@ -1,60 +1,70 @@
 package metrics
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
 
-func fixedNow(t time.Time) func() time.Time {
-	return func() time.Time { return t }
-}
+var fixedNow = time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
 
 func TestRecord_StoresSnapshot(t *testing.T) {
-	now := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
-	c := &Collector{nowFn: fixedNow(now)}
+	c := NewCollector()
+	c.now = func() time.Time { return fixedNow }
 
-	c.Record(Snapshot{TotalSecrets: 5, Expired: 1, Warning: 2})
-	got := c.Get()
+	c.Record("secret/db", "ok", 42*time.Millisecond, nil)
 
-	if got.TotalSecrets != 5 {
-		t.Errorf("expected TotalSecrets=5, got %d", got.TotalSecrets)
+	s, ok := c.Get("secret/db")
+	if !ok {
+		t.Fatal("expected snapshot to exist")
 	}
-	if got.Expired != 1 {
-		t.Errorf("expected Expired=1, got %d", got.Expired)
+	if s.Status != "ok" {
+		t.Errorf("status: got %q, want %q", s.Status, "ok")
 	}
-	if !got.CollectedAt.Equal(now) {
-		t.Errorf("expected CollectedAt=%v, got %v", now, got.CollectedAt)
+	if s.Duration != 42*time.Millisecond {
+		t.Errorf("duration: got %v, want 42ms", s.Duration)
+	}
+	if !s.CheckedAt.Equal(fixedNow) {
+		t.Errorf("checkedAt: got %v, want %v", s.CheckedAt, fixedNow)
+	}
+	if s.Error != "" {
+		t.Errorf("error: expected empty, got %q", s.Error)
 	}
 }
 
 func TestRecord_OverwritesPrevious(t *testing.T) {
 	c := NewCollector()
-	c.Record(Snapshot{TotalSecrets: 3})
-	c.Record(Snapshot{TotalSecrets: 7})
+	c.Record("secret/db", "warning", 10*time.Millisecond, nil)
+	c.Record("secret/db", "expired", 20*time.Millisecond, errors.New("ttl elapsed"))
 
-	if got := c.Get().TotalSecrets; got != 7 {
-		t.Errorf("expected 7, got %d", got)
+	s, _ := c.Get("secret/db")
+	if s.Status != "expired" {
+		t.Errorf("expected overwritten status %q, got %q", "expired", s.Status)
+	}
+	if s.Error != "ttl elapsed" {
+		t.Errorf("expected error %q, got %q", "ttl elapsed", s.Error)
 	}
 }
 
 func TestReset_ClearsSnapshot(t *testing.T) {
 	c := NewCollector()
-	c.Record(Snapshot{TotalSecrets: 4, Expired: 2})
+	c.Record("secret/db", "ok", 0, nil)
 	c.Reset()
-	got := c.Get()
 
-	if got.TotalSecrets != 0 || got.Expired != 0 {
-		t.Errorf("expected zeroed snapshot after Reset, got %+v", got)
+	if _, ok := c.Get("secret/db"); ok {
+		t.Error("expected snapshot to be cleared after Reset")
 	}
 }
 
 func TestGet_ReturnsCopy(t *testing.T) {
 	c := NewCollector()
-	c.Record(Snapshot{TotalSecrets: 5})
-	s := c.Get()
-	s.TotalSecrets = 99
+	c.Record("secret/api", "ok", 5*time.Millisecond, nil)
 
-	if c.Get().TotalSecrets == 99 {
-		t.Error("Get should return a copy, not a reference")
+	s1, _ := c.Get("secret/api")
+	s1.Status = "mutated"
+
+	s2, _ := c.Get("secret/api")
+	if s2.Status == "mutated" {
+		t.Error("Get should return a value copy, not a pointer to internal state")
 	}
 }

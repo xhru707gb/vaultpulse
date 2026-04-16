@@ -2,45 +2,65 @@ package metrics
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
 
 const (
-	headerLine = "%-20s %s"
-	rowLine    = "%-20s %v"
+	colPath      = "PATH"
+	colStatus    = "STATUS"
+	colCheckedAt = "CHECKED AT"
+	colDuration  = "DURATION"
+	colError     = "ERROR"
 )
 
-// FormatTable renders the snapshot as a human-readable table.
-func FormatTable(s Snapshot) string {
+// FormatTable renders snapshots as a fixed-width ASCII table.
+func FormatTable(snapshots []Snapshot) string {
+	if len(snapshots) == 0 {
+		return "no metrics recorded\n"
+	}
+
+	sorted := make([]Snapshot, len(snapshots))
+	copy(sorted, snapshots)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Path < sorted[j].Path
+	})
+
 	var sb strings.Builder
+	fmt.Fprintf(&sb, "%-40s %-10s %-22s %-12s %s\n",
+		colPath, colStatus, colCheckedAt, colDuration, colError)
+	fmt.Fprintf(&sb, "%s\n", strings.Repeat("-", 100))
 
-	sb.WriteString("=== VaultPulse Metrics Snapshot ===\n")
-	sb.WriteString(fmt.Sprintf("%-20s %s\n", "Collected At", formatTime(s.CollectedAt)))
-	sb.WriteString(fmt.Sprintf("%-20s %s\n", "Last Check Duration", formatDuration(s.LastCheckDur)))
-	sb.WriteString(strings.Repeat("-", 40) + "\n")
-	sb.WriteString(fmt.Sprintf(headerLine+"\n", "Metric", "Value"))
-	sb.WriteString(strings.Repeat("-", 40) + "\n")
-	sb.WriteString(fmt.Sprintf(rowLine+"\n", "Total Secrets", s.TotalSecrets))
-	sb.WriteString(fmt.Sprintf(rowLine+"\n", "Expired", s.Expired))
-	sb.WriteString(fmt.Sprintf(rowLine+"\n", "Warning", s.Warning))
-	sb.WriteString(fmt.Sprintf(rowLine+"\n", "Healthy", s.Healthy))
-	sb.WriteString(fmt.Sprintf(rowLine+"\n", "Overdue Rotation", s.OverdueRotation))
-	sb.WriteString(fmt.Sprintf(rowLine+"\n", "Policy Violations", s.PolicyViolation))
-
+	for _, s := range sorted {
+		fmt.Fprintf(&sb, "%-40s %-10s %-22s %-12s %s\n",
+			truncate(s.Path, 40),
+			s.Status,
+			formatTime(s.CheckedAt),
+			formatDuration(s.Duration),
+			s.Error,
+		)
+	}
 	return sb.String()
 }
 
 func formatTime(t time.Time) string {
 	if t.IsZero() {
-		return "n/a"
+		return "-"
 	}
-	return t.UTC().Format(time.RFC3339)
+	return t.UTC().Format("2006-01-02 15:04:05")
 }
 
 func formatDuration(d time.Duration) string {
 	if d == 0 {
-		return "n/a"
+		return "-"
 	}
 	return d.Round(time.Millisecond).String()
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-1] + "…"
 }

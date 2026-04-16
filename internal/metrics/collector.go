@@ -1,5 +1,5 @@
-// Package metrics provides aggregated runtime metrics collection
-// across expiry, rotation, health, and policy check results.
+// Package metrics records per-path check snapshots and exposes
+// lightweight aggregation for CLI reporting.
 package metrics
 
 import (
@@ -7,49 +7,69 @@ import (
 	"time"
 )
 
-// Snapshot holds a point-in-time view of collected metrics.
+// Snapshot holds the result of a single check run for one secret path.
 type Snapshot struct {
-	CollectedAt     time.Time
-	TotalSecrets    int
-	Expired         int
-	Warning         int
-	Healthy         int
-	OverdueRotation int
-	PolicyViolation int
-	LastCheckDur    time.Duration
+	Path      string
+	CheckedAt time.Time
+	Duration  time.Duration
+	Status    string // "ok", "warning", "expired"
+	Error     string // empty when no error
 }
 
-// Collector accumulates metrics from check runs.
+// Collector stores the most-recent snapshot per path.
 type Collector struct {
-	mu       sync.Mutex
-	current  Snapshot
-	nowFn    func() time.Time
+	mu   sync.RWMutex
+	data map[string]Snapshot
+	now  func() time.Time
 }
 
-// NewCollector returns a new Collector using real wall-clock time.
+// NewCollector returns an initialised Collector.
 func NewCollector() *Collector {
-	return &Collector{nowFn: time.Now}
+	return &Collector{
+		data: make(map[string]Snapshot),
+		now:  time.Now,
+	}
 }
 
-// Record replaces the current snapshot with the provided values and
-// stamps the collection time.
-func (c *Collector) Record(s Snapshot) {
+// Record stores (or overwrites) the snapshot for path.
+func (c *Collector) Record(path, status string, d time.Duration, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	s.CollectedAt = c.nowFn()
-	c.current = s
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
+	}
+	c.data[path] = Snapshot{
+		Path:      path,
+		CheckedAt: c.now(),
+		Duration:  d,
+		Status:    status,
+		Error:     errStr,
+	}
 }
 
-// Get returns a copy of the most recently recorded snapshot.
-func (c *Collector) Get() Snapshot {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.current
+// Get returns the snapshot for path and whether it exists.
+func (c *Collector) Get(path string) (Snapshot, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	s, ok := c.data[path]
+	return s, ok
 }
 
-// Reset zeroes the current snapshot.
+// All returns a copy of every stored snapshot.
+func (c *Collector) All() []Snapshot {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	out := make([]Snapshot, 0, len(c.data))
+	for _, s := range c.data {
+		out = append(out, s)
+	}
+	return out
+}
+
+// Reset removes all stored snapshots.
 func (c *Collector) Reset() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.current = Snapshot{}
+	c.data = make(map[string]Snapshot)
 }
