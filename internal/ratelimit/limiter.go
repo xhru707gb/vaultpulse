@@ -75,3 +75,18 @@ func (l *Limiter) Wait() {
 		time.Sleep(time.Millisecond * 5)
 	}
 }
+
+// Tokens returns the current number of available tokens without consuming any.
+func (l *Limiter) Tokens() float64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	now := l.now()
+	elapsed := now.Sub(l.lastTick)
+
+	tokens := l.tokens + float64(elapsed)*l.rate
+	if tokens > l.max {
+		tokens = l.max
+	}
+	return tokens
+}
