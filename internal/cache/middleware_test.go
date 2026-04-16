@@ -60,6 +60,9 @@ func TestGetOrFetch_FetcherError_NotCached(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
+	if !errors.Is(err, fetchErr) {
+		t.Errorf("expected fetchErr, got %v", err)
+	}
 	if _, ok := c.Get("baz"); ok {
 		t.Error("expected key not to be cached after fetch error")
 	}
