@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -63,7 +64,8 @@ func (n *Notifier) Notify(statuses []expiry.Status) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("alert: webhook returned non-2xx status: %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
+		return fmt.Errorf("alert: webhook returned non-2xx status: %d: %s", resp.StatusCode, bytes.TrimSpace(respBody))
 	}
 	return nil
 }
