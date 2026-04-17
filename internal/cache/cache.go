@@ -15,9 +15,9 @@ type Entry struct {
 
 // Cache is a simple thread-safe in-memory TTL store.
 type Cache struct {
-	mu      sync.RWMutex
-	items   map[string]Entry
-	default TTL time.Duration
+	mu         sync.RWMutex
+	items      map[string]Entry
+	defaultTTL time.Duration
 }
 
 // New creates a Cache with the given default TTL for all entries.
@@ -74,4 +74,20 @@ func (c *Cache) Len() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.items)
+}
+
+// Purge removes all expired entries from the cache and returns the number
+// of entries that were deleted.
+func (c *Cache) Purge() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := time.Now()
+	count := 0
+	for key, entry := range c.items {
+		if now.After(entry.ExpiresAt) {
+			delete(c.items, key)
+			count++
+		}
+	}
+	return count
 }
