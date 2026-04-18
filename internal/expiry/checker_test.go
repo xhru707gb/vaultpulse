@@ -83,6 +83,15 @@ func TestCheck_Expired(t *testing.T) {
 	}
 }
 
+func TestCheck_InvalidExpiration(t *testing.T) {
+	checker := newTestChecker(t, "not-a-valid-timestamp", 24*time.Hour)
+
+	_, err := checker.Check("secret/my-app/db")
+	if err == nil {
+		t.Error("expected error for invalid expiration format, got nil")
+	}
+}
+
 func TestCheckAll_MultipleSecrets(t *testing.T) {
 	future := time.Now().Add(72 * time.Hour).UTC().Format(time.RFC3339)
 	checker := newTestChecker(t, future, 24*time.Hour)
