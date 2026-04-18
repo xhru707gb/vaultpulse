@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	colPath    = "PATH"
-	colKey     = "KEY VERSION"
-	colAge     = "AGE"
-	colEncAt   = "ENCRYPTED AT"
+	colPath  = "PATH"
+	colKey   = "KEY VERSION"
+	colAge   = "AGE"
+	colEncAt = "ENCRYPTED AT"
 )
 
 // FormatTable renders a slice of Envelopes as a plain-text table.
@@ -27,6 +27,9 @@ func FormatTable(envelopes []*Envelope) string {
 	return sb.String()
 }
 
+// formatAge formats a duration as a human-readable age string.
+// Durations under a minute show seconds, under an hour show minutes,
+// and anything longer shows hours.
 func formatAge(d time.Duration) string {
 	d = d.Round(time.Second)
 	if d < time.Minute {
@@ -38,9 +41,11 @@ func formatAge(d time.Duration) string {
 	return fmt.Sprintf("%dh", int(d.Hours()))
 }
 
+// truncate shortens s to at most max runes, appending an ellipsis if truncated.
 func truncate(s string, max int) string {
-	if len(s) <= max {
+	runes := []rune(s)
+	if len(runes) <= max {
 		return s
 	}
-	return s[:max-1] + "…"
+	return string(runes[:max-1]) + "…"
 }
