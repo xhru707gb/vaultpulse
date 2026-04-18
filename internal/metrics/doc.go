@@ -14,13 +14,19 @@
 //
 // Snapshot is a plain struct whose fields map 1-to-1 to the columns
 // shown in the dashboard table. Zero values are valid and mean "no data
-// collected yet".
+// collected yet". The IsEmpty method returns true when no data has been
+// recorded (i.e. all fields are zero).
 //
 // # Formatting
 //
 // FormatTable renders a Snapshot as a human-readable text table suitable
 // for terminal output. For machine consumption, callers can access the
 // Snapshot fields directly.
+//
+// # Thread Safety
+//
+// Collector is safe for concurrent use. Record and Get may be called
+// from multiple goroutines without additional synchronisation.
 //
 // Usage:
 //
