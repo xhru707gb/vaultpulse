@@ -30,6 +30,16 @@ func TestSeal_EmptyPath_ReturnsError(t *testing.T) {
 	}
 }
 
+func TestSeal_DuplicatePath_ReturnsError(t *testing.T) {
+	s := newTestSealer()
+	if err := s.Seal("secret/db", "compliance", fixedNow); err != nil {
+		t.Fatalf("unexpected error on first seal: %v", err)
+	}
+	if err := s.Seal("secret/db", "duplicate", fixedNow); err == nil {
+		t.Error("expected error when sealing an already-sealed path")
+	}
+}
+
 func TestUnseal_RemovesSeal(t *testing.T) {
 	s := newTestSealer()
 	_ = s.Seal("secret/api", "audit", fixedNow)
