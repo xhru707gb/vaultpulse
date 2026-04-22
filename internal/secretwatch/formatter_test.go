@@ -57,3 +57,12 @@ func TestFormatSummary_Counts(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatSummary_EmptyEvents(t *testing.T) {
+	out := secretwatch.FormatSummary(nil)
+	for _, s := range []string{"added=0", "removed=0", "modified=0"} {
+		if !strings.Contains(out, s) {
+			t.Errorf("expected %q in empty summary, got: %q", s, out)
+		}
+	}
+}
